@@ -2,49 +2,126 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Веб-дизайн и создание сайтов в СПб — заказать сайт под ключ</title>
-  <link rel="icon" href="/favicons/favicon.ico" type="image/x-icon">
-  <link rel="manifest" href="/favicons/site.webmanifest">
-  <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png">
-  <meta name="theme-color" content="#121212">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="keywords" content="Веб-дизайн, создание сайтов, создание сайтов спб, заказать сайт, разработка сайтов под ключ.">
-  <meta name="description" content="Профессиональный веб-дизайн и создание сайтов под ключ в Санкт-Петербурге. Закажите современный и эффективный сайт для вашего бизнеса. Разработка сайтов СПб — от идеи до запуска!" />
-  <link rel="stylesheet" href="style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet" />
+  <title>Парсер стилей по URL</title>
+  <style>
+    body {
+      max-width: 700px;
+      margin: 2rem auto;
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 0 15px #ccc;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 16px;
+      border-radius: 4px;
+      border: 1px solid #aaa;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.6rem 1.2rem;
+      font-size: 16px;
+      background: #007bff;
+      border: none;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .result {
+      margin-top: 1.5rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+      background: white;
+    }
+    th, td {
+      border: 1px solid #bbb;
+      padding: 0.4rem 0.8rem;
+      text-align: left;
+    }
+    th {
+      background: #eee;
+    }
+    .selector {
+      background: #dfefff;
+      font-weight: bold;
+    }
+    .error {
+      color: red;
+      font-weight: bold;
+      margin-top: 1rem;
+    }
+  </style>
 </head>
 <body>
-<header class="header">
-  <a href="/" class="logo">
-    <img src="Logo.svg" alt="Logo" class="glitch-img" />
-  </a>
-</header>
-  <h1>Профессиональное создание сайтов <span class="mobile-br"><br></span>и веб-дизайн в Санкт-Петербурге</h1>
-  <a class="link shine" href="create/"></i>Создание и редизайн сайтов</a>
-  <a class="link shine" href="optimization-ux-ui/"></i>Оптимизация UX/UI</a>
-  <a class="link shine" href="analysis/"></i>Бесплатный анализ сайта</a>
-  <a class="link shine" href="portfolio/"></i>Портфолио</a>
-  <a class="link" href="education/"></i>База знаний</a>
-  <a class="link" href="palette/"></i>Генератор палитр</a>
-  <a class="link" href="style-parser/"></i>Парсер стиля</a>
-  <a class="link" href="image/"></i>Обработка изображений</a>
-  <a class="link" href="synth/"></i>Синтезатор</a>
-  <a class="link" href="tree/"></i>Посади дерево</a>
-  <a class="link" href="geo/"></i>Определение координат</a>
-  <a class="link" href="trends/"></i>Тренды дизайна</a>
-  <a class="link" href="blog/"></i>Блог</a>
-  <a class="link" href="reviews/"></i>Отзывы</a>
-  <a class="link" href="contacts/"></i>Контакты</a>
-  <main>
-    <p>В современном мире сайт — это не просто визитная карточка, а полноценный инструмент для развития бизнеса.<br>Веб-дизайн и создание сайтов под ключ от профессионалов в СПб помогут Вам выделиться среди конкурентов, привлечь<br>новых клиентов и повысить продажи. Мы создаём не просто красивые страницы, а эффективные решения, которые работают<br>на Вашу цель.
 
-Каждый проект — это индивидуальная разработка с учётом особенностей вашего бизнеса и целевой аудитории.<br>От простого лендинга до сложного многостраничника — мы обеспечим полный цикл работ: дизайн, адаптацию под мобильные устройства, программирование, SEO и последующую поддержку. Благодаря инновационным технологиям и продуманному UX/UI Ваши посетители останутся довольны удобством и функциональностью сайта.
+  <h1>Парсер стилей по URL</h1>
 
-Заказывая сайт у нас, Вы получаете<br>готовое решение, которое легко масштабируется и обновляется. Мы всегда идём навстречу клиенту, создавая сайты,<br>которые не только красиво выглядят, но и приносят реальный результат. Профессиональный веб-дизайн в СПб —<br>это Ваша инвестиция в успешное будущее бизнеса в интернете. И да прибудет с Вами консистентность.</p>
+  <input type="text" id="urlInput" placeholder="Введите URL сайта, например https://example.com" />
+  <button id="parseBtn">Получить стили</button>
 
-  </main>
-  <footer>© 2025 Web-design.SPb</footer>
-  <script src="script.js"></script>
+  <div class="result" id="result"></div>
+
+  <script>
+    const btn = document.getElementById('parseBtn');
+    const input = document.getElementById('urlInput');
+    const resultDiv = document.getElementById('result');
+
+    btn.addEventListener('click', async () => {
+      const url = input.value.trim();
+      resultDiv.innerHTML = 'Загрузка...';
+
+      if (!url) {
+        resultDiv.innerHTML = '<div class="error">Введите URL!</div>';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          resultDiv.innerHTML = `<div class="error">Ошибка: ${errData.error || 'Неизвестная ошибка'}</div>`;
+          return;
+        }
+
+        const data = await response.json();
+
+        if (!data.rules || data.rules.length === 0) {
+          resultDiv.innerHTML = '<div>Стили не найдены.</div>';
+          return;
+        }
+
+        let html = '';
+        data.rules.forEach(rule => {
+          html += `<table><thead><tr><th colspan="2" class="selector">${rule.selector}</th></tr></thead><tbody>`;
+          rule.declarations.forEach(decl => {
+            html += `<tr><td>${decl.property}</td><td>${decl.value}</td></tr>`;
+          });
+          html += `</tbody></table>`;
+        });
+
+        resultDiv.innerHTML = html;
+
+      } catch (e) {
+        resultDiv.innerHTML = `<div class="error">Ошибка при запросе: ${e.message}</div>`;
+      }
+    });
+  </script>
+
 </body>
 </html>
