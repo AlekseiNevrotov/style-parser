@@ -37,24 +37,24 @@
     }
     .result {
       margin-top: 1.5rem;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 0.5rem;
       background: white;
+      padding: 1rem;
+      border-radius: 6px;
+      box-shadow: 0 0 10px #bbb;
+      max-height: 500px;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-family: monospace;
     }
-    th, td {
-      border: 1px solid #bbb;
-      padding: 0.4rem 0.8rem;
-      text-align: left;
+    h2 {
+      margin-top: 1rem;
     }
-    th {
-      background: #eee;
+    a {
+      color: #007bff;
+      text-decoration: none;
     }
-    .selector {
-      background: #dfefff;
-      font-weight: bold;
+    a:hover {
+      text-decoration: underline;
     }
     .error {
       color: red;
@@ -79,7 +79,7 @@
 
     btn.addEventListener('click', async () => {
       const url = input.value.trim();
-      resultDiv.innerHTML = 'Загрузка...';
+      resultDiv.textContent = 'Загрузка...';
 
       if (!url) {
         resultDiv.innerHTML = '<div class="error">Введите URL!</div>';
@@ -101,19 +101,30 @@
 
         const data = await response.json();
 
-        if (!data.rules || data.rules.length === 0) {
+        if (
+          (!data.inlineStyles || data.inlineStyles.length === 0) &&
+          (!data.externalStylesheets || data.externalStylesheets.length === 0)
+        ) {
           resultDiv.innerHTML = '<div>Стили не найдены.</div>';
           return;
         }
 
         let html = '';
-        data.rules.forEach(rule => {
-          html += `<table><thead><tr><th colspan="2" class="selector">${rule.selector}</th></tr></thead><tbody>`;
-          rule.declarations.forEach(decl => {
-            html += `<tr><td>${decl.property}</td><td>${decl.value}</td></tr>`;
+
+        if (data.inlineStyles && data.inlineStyles.length > 0) {
+          html += '<h2>Inline стили (в тегах &lt;style&gt;)</h2>';
+          data.inlineStyles.forEach(styleText => {
+            html += `<pre>${styleText}</pre>`;
           });
-          html += `</tbody></table>`;
-        });
+        }
+
+        if (data.externalStylesheets && data.externalStylesheets.length > 0) {
+          html += '<h2>Внешние CSS файлы</h2><ul>';
+          data.externalStylesheets.forEach(href => {
+            html += `<li><a href="${href}" target="_blank" rel="noopener noreferrer">${href}</a></li>`;
+          });
+          html += '</ul>';
+        }
 
         resultDiv.innerHTML = html;
 
