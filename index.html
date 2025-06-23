@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Парсер стилей по URL</title>
+  <style>
+    body {
+      max-width: 700px;
+      margin: 2rem auto;
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 0 15px #ccc;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 16px;
+      border-radius: 4px;
+      border: 1px solid #aaa;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.6rem 1.2rem;
+      font-size: 16px;
+      background: #007bff;
+      border: none;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .result {
+      margin-top: 1.5rem;
+      white-space: pre-wrap;
+      background: #fff;
+      padding: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .error {
+      color: red;
+      font-weight: bold;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Парсер стилей по URL</h1>
+
+  <input type="text" id="urlInput" placeholder="Введите URL сайта, например https://example.com" />
+  <button id="parseBtn">Получить стили</button>
+
+  <div class="result" id="result"></div>
+
+  <script>
+    const btn = document.getElementById('parseBtn');
+    const input = document.getElementById('urlInput');
+    const resultDiv = document.getElementById('result');
+
+    btn.addEventListener('click', async () => {
+      const url = input.value.trim();
+      resultDiv.textContent = 'Загрузка...';
+
+      if (!url) {
+        resultDiv.innerHTML = '<div class="error">Введите URL!</div>';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          resultDiv.innerHTML = `<div class="error">Ошибка: ${errData.error || 'Неизвестная ошибка'}</div>`;
+          return;
+        }
+
+        const data = await response.json();
+
+        let output = '';
+
+        if (data.inlineStyles.length === 0 && data.externalStylesheets.length === 0) {
+          output = 'Стили не найдены.';
+        } else {
+          if (data.inlineStyles.length > 0) {
+            output += 'Inline стили:\n\n' + data.inlineStyles.join('\n\n') + '\n\n';
+          }
+          if (data.externalStylesheets.length > 0) {
+            output += 'Внешние стили (CSS файлы):\n' + data.externalStylesheets.join('\n');
+          }
+        }
+
+        resultDiv.textContent = output;
+
+      } catch (e) {
+        resultDiv.innerHTML = `<div class="error">Ошибка при запросе: ${e.message}</div>`;
+      }
+    });
+  </script>
+
+</body>
+</html>
