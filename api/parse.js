@@ -2,6 +2,15 @@ import fetch from 'node-fetch';
 import { JSDOM } from 'jsdom';
 
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'POST');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.status(200).end();
+    return;
+  }
+
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Метод не поддерживается, нужен POST' });
     return;
@@ -15,7 +24,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Получаем HTML страницы
     const response = await fetch(url);
     if (!response.ok) {
       res.status(400).json({ error: `Ошибка загрузки страницы: ${response.status}` });
@@ -23,14 +31,11 @@ export default async function handler(req, res) {
     }
     const html = await response.text();
 
-    // Парсим DOM
     const dom = new JSDOM(html);
 
-    // Собираем inline стили (тег <style>)
     const inlineStyles = Array.from(dom.window.document.querySelectorAll('style'))
       .map(styleTag => styleTag.textContent.trim());
 
-    // Собираем внешние css (тег <link rel="stylesheet">)
     const externalStylesheets = Array.from(dom.window.document.querySelectorAll('link[rel="stylesheet"]'))
       .map(link => link.href);
 
