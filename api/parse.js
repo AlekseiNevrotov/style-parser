@@ -2,13 +2,11 @@ import fetch from 'node-fetch';
 import { JSDOM } from 'jsdom';
 
 export default async function handler(req, res) {
-  // Разрешаем CORS — чтобы фронтенд мог обращаться
+  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') {
-    // Предварительный запрос CORS
+    res.setHeader('Access-Control-Allow-Methods', 'POST');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.status(200).end();
     return;
   }
@@ -19,7 +17,6 @@ export default async function handler(req, res) {
   }
 
   const { url } = req.body;
-
   if (!url) {
     res.status(400).json({ error: 'Параметр url обязателен' });
     return;
@@ -28,30 +25,31 @@ export default async function handler(req, res) {
   try {
     const response = await fetch(url);
 
+    const text = await response.text();
+
     if (!response.ok) {
-      res.status(400).json({ error: `Ошибка загрузки страницы: ${response.status}` });
-      return;
+      // Возвращаем статус и первые 200 символов текста ошибки
+      return res.status(response.status).json({
+        error: `Ошибка загрузки страницы: ${response.status}`,
+        details: text.slice(0, 200),
+      });
     }
 
-    const html = await response.text();
+    // Парсим DOM из полученного текста
+    const dom = new JSDOM(text);
 
-    const dom = new JSDOM(html);
-
-    // Получаем все inline стили из <style>
+    // Собираем inline стили (теги <style>)
     const inlineStyles = Array.from(dom.window.document.querySelectorAll('style'))
       .map(styleTag => styleTag.textContent.trim())
       .filter(Boolean);
 
-    // Получаем внешние CSS файлы из <link rel="stylesheet">
+    // Собираем внешние CSS (href из <link rel="stylesheet">)
     const externalStylesheets = Array.from(dom.window.document.querySelectorAll('link[rel="stylesheet"]'))
       .map(link => link.href)
       .filter(Boolean);
 
-    res.status(200).json({
-      inlineStyles,
-      externalStylesheets
-    });
+    res.status(200).json({ inlineStyles, externalStylesheets });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: `Ошибка сервера: ${error.message}` });
   }
 }
