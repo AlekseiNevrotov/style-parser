@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Метод не поддерживается, нужен POST' });
+    res.status(405).json({ error: 'Требуется POST-запрос' });
     return;
   }
 
@@ -36,6 +36,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Загружаем HTML страницы
     const pageResp = await fetch(url);
     if (!pageResp.ok) {
       res.status(400).json({ error: `Ошибка загрузки страницы: ${pageResp.status}` });
@@ -43,18 +44,19 @@ export default async function handler(req, res) {
     }
     const html = await pageResp.text();
 
-    const dom = new JSDOM(html, { url }); // важен базовый url для относительных ссылок
+    // Парсим DOM, указываем базовый URL для правильных относительных ссылок
+    const dom = new JSDOM(html, { url });
 
-    // Inline стили
+    // Получаем inline стили
     const inlineStyles = Array.from(dom.window.document.querySelectorAll('style'))
       .map(el => el.textContent.trim())
       .filter(Boolean);
 
-    // Ссылки на внешние CSS (приводим к абсолютным URL)
+    // Получаем абсолютные URL внешних CSS
     const externalStylesheets = Array.from(dom.window.document.querySelectorAll('link[rel="stylesheet"]'))
       .map(link => new URL(link.href, url).href);
 
-    // Параллельно скачиваем содержимое внешних CSS
+    // Загружаем содержимое каждого внешнего CSS
     const externalCssContent = await Promise.all(
       externalStylesheets.map(href => fetchCssContent(href))
     );
