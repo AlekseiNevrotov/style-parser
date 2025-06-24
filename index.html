@@ -84,23 +84,36 @@
           body: JSON.stringify({ url })
         });
 
+        const responseText = await response.text();
+
         if (!response.ok) {
-          let errData;
+          let errorText = '';
           try {
-            errData = await response.json();
-            resultDiv.innerHTML = `<div class="error">Ошибка: ${errData.error || 'Неизвестная ошибка'}${errData.details ? `<br><pre>${errData.details}</pre>` : ''}</div>`;
+            const errorJson = JSON.parse(responseText);
+            errorText = `Ошибка: ${errorJson.error || 'Неизвестная ошибка'}`;
+            if (errorJson.details) {
+              errorText += `<br><pre>${errorJson.details}</pre>`;
+            }
           } catch {
-            const text = await response.text();
-            resultDiv.innerHTML = `<div class="error">Ошибка: ${text}</div>`;
+            errorText = `Ошибка: ${responseText}`;
           }
+
+          resultDiv.innerHTML = `<div class="error">${errorText}</div>`;
           return;
         }
 
-        const data = await response.json();
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          resultDiv.innerHTML = `<div class="error">Ошибка: Ответ сервера не является корректным JSON</div>`;
+          return;
+        }
 
         let output = '';
 
-        if ((data.inlineStyles?.length ?? 0) === 0 && (data.externalStylesheets?.length ?? 0) === 0) {
+        if ((!data.inlineStyles || data.inlineStyles.length === 0) &&
+            (!data.externalStylesheets || data.externalStylesheets.length === 0)) {
           output = 'Стили не найдены.';
         } else {
           if (data.inlineStyles?.length > 0) {
