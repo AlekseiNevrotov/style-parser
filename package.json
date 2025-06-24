@@ -1,9 +1,27 @@
 {
-  "name": "css-parser",
+  "name": "css-parser-vercel",
   "version": "1.0.0",
-  "type": "module",
+  "description": "Парсер CSS стилей с внешних сайтов для Vercel serverless",
+  "main": "api/parse.js",
+  "scripts": {
+    "start": "vercel dev"
+  },
+  "keywords": [
+    "css",
+    "parser",
+    "vercel",
+    "serverless",
+    "node",
+    "jsdom",
+    "fetch"
+  ],
+  "author": "Ваше Имя",
+  "license": "MIT",
   "dependencies": {
-    "jsdom": "^24.0.0",
+    "jsdom": "^22.1.0",
     "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }

@@ -2,7 +2,14 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Парсер стилейы по URL</title>
+  <title>Парсер стилей по URL</title>
+
+  <!-- Prism CSS (тема okaidia — темная, похожая на VS Code) -->
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css"
+    rel="stylesheet"
+  />
+
   <style>
     body {
       max-width: 700px;
@@ -35,18 +42,22 @@
     button:hover {
       background: #0056b3;
     }
+
     .result {
       margin-top: 1.5rem;
-      white-space: pre-wrap;
-      background: #fff;
-      padding: 1rem;
-      border-radius: 4px;
-      border: 1px solid #ccc;
       max-height: 400px;
       overflow-y: auto;
-      font-family: monospace;
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+      background: #1e1e1e;
+      padding: 1rem;
       font-size: 14px;
+      line-height: 1.4;
+      font-family: 'Fira Code', Consolas, Monaco, 'Courier New', monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
+
     .error {
       color: red;
       font-weight: bold;
@@ -58,76 +69,92 @@
 
   <h1>Парсер стилей по URL</h1>
 
-  <input type="text" id="urlInput" placeholder="Введите URL сайта, например https://example.com" />
+  <input
+    type="text"
+    id="urlInput"
+    placeholder="Введите URL сайта, например https://example.com"
+  />
   <button id="parseBtn">Получить стили</button>
 
-  <div class="result" id="result"></div>
+  <div class="result">
+    <pre class="language-css"><code id="cssCode"></code></pre>
+  </div>
+
+  <!-- Prism JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
 
   <script>
     const btn = document.getElementById('parseBtn');
     const input = document.getElementById('urlInput');
-    const resultDiv = document.getElementById('result');
+    const codeElem = document.getElementById('cssCode');
+    const resultDiv = document.querySelector('.result');
 
     btn.addEventListener('click', async () => {
       const url = input.value.trim();
-      resultDiv.textContent = 'Загрузка...';
+
+      codeElem.textContent = '';
+      resultDiv.classList.remove('error');
+      codeElem.parentElement.style.display = 'block';
 
       if (!url) {
-        resultDiv.innerHTML = '<div class="error">Введите URL!</div>';
+        resultDiv.classList.add('error');
+        codeElem.parentElement.style.display = 'none';
+        resultDiv.textContent = 'Введите URL!';
         return;
       }
 
+      resultDiv.classList.remove('error');
+      codeElem.textContent = 'Загрузка...';
+      
       try {
         const response = await fetch('/api/parse', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url })
+          body: JSON.stringify({ url }),
         });
 
-        const responseText = await response.text();
-
         if (!response.ok) {
-          let errorText = '';
-          try {
-            const errorJson = JSON.parse(responseText);
-            errorText = `Ошибка: ${errorJson.error || 'Неизвестная ошибка'}`;
-            if (errorJson.details) {
-              errorText += `<br><pre>${errorJson.details}</pre>`;
+          const errData = await response.json();
+          resultDiv.classList.add('error');
+          codeElem.parentElement.style.display = 'none';
+          resultDiv.textContent = `Ошибка: ${errData.error || 'Неизвестная ошибка'}`;
+          return;
+        }
+
+        const data = await response.json();
+
+        let combinedCss = '';
+
+        // Добавляем inline стили
+        if (data.inlineStyles && data.inlineStyles.length > 0) {
+          combinedCss += data.inlineStyles.join('\n\n') + '\n\n';
+        }
+
+        // Добавляем содержимое внешних CSS
+        if (data.externalCssContent && data.externalCssContent.length > 0) {
+          data.externalCssContent.forEach(cssFile => {
+            if (cssFile.content) {
+              combinedCss += `/* Файл: ${cssFile.url} */\n` + cssFile.content + '\n\n';
+            } else {
+              combinedCss += `/* Не удалось загрузить: ${cssFile.url}, ошибка: ${cssFile.error} */\n\n`;
             }
-          } catch {
-            errorText = `Ошибка: ${responseText}`;
-          }
-
-          resultDiv.innerHTML = `<div class="error">${errorText}</div>`;
-          return;
+          });
         }
 
-        let data;
-        try {
-          data = JSON.parse(responseText);
-        } catch {
-          resultDiv.innerHTML = `<div class="error">Ошибка: Ответ сервера не является корректным JSON</div>`;
-          return;
+        if (!combinedCss.trim()) {
+          combinedCss = 'Стили не найдены.';
+          codeElem.parentElement.style.display = 'none';
+          resultDiv.classList.add('error');
         }
 
-        let output = '';
-
-        if ((!data.inlineStyles || data.inlineStyles.length === 0) &&
-            (!data.externalStylesheets || data.externalStylesheets.length === 0)) {
-          output = 'Стили не найдены.';
-        } else {
-          if (data.inlineStyles?.length > 0) {
-            output += 'Inline стили:\n\n' + data.inlineStyles.join('\n\n') + '\n\n';
-          }
-          if (data.externalStylesheets?.length > 0) {
-            output += 'Внешние стили (CSS файлы):\n' + data.externalStylesheets.join('\n');
-          }
-        }
-
-        resultDiv.textContent = output;
+        codeElem.textContent = combinedCss.trim();
+        Prism.highlightElement(codeElem);
 
       } catch (e) {
-        resultDiv.innerHTML = `<div class="error">Ошибка при запросе: ${e.message}</div>`;
+        resultDiv.classList.add('error');
+        codeElem.parentElement.style.display = 'none';
+        resultDiv.textContent = `Ошибка при запросе: ${e.message}`;
       }
     });
   </script>

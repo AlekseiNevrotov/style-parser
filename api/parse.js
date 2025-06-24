@@ -1,72 +1,66 @@
 import fetch from 'node-fetch';
 import { JSDOM } from 'jsdom';
 
-async function fetchCssContent(url) {
-  try {
-    const resp = await fetch(url);
-    if (!resp.ok) {
-      return { url, content: null, error: `HTTP ${resp.status}` };
-    }
-    const cssText = await resp.text();
-    return { url, content: cssText, error: null };
-  } catch (e) {
-    return { url, content: null, error: e.message };
-  }
-}
-
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Methods', 'POST');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    res.status(200).end();
-    return;
-  }
-
   if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Требуется POST-запрос' });
-    return;
-  }
-
-  const { url } = req.body;
-  if (!url) {
-    res.status(400).json({ error: 'Параметр url обязателен' });
-    return;
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    // Загружаем HTML страницы
-    const pageResp = await fetch(url);
-    if (!pageResp.ok) {
-      res.status(400).json({ error: `Ошибка загрузки страницы: ${pageResp.status}` });
-      return;
+    const { url } = req.body;
+
+    if (!url) {
+      return res.status(400).json({ error: 'Параметр url обязателен' });
     }
-    const html = await pageResp.text();
 
-    // Парсим DOM, указываем базовый URL для правильных относительных ссылок
-    const dom = new JSDOM(html, { url });
+    // Получаем HTML страницы
+    const response = await fetch(url, { timeout: 10000 });
+    if (!response.ok) {
+      return res.status(400).json({ error: `Не удалось загрузить страницу: ${response.statusText}` });
+    }
+    const html = await response.text();
 
-    // Получаем inline стили
-    const inlineStyles = Array.from(dom.window.document.querySelectorAll('style'))
-      .map(el => el.textContent.trim())
+    // Парсим HTML через JSDOM
+    const dom = new JSDOM(html);
+    const document = dom.window.document;
+
+    // Собираем inline стили из <style>
+    const inlineStyles = Array.from(document.querySelectorAll('style'))
+      .map(style => style.textContent)
       .filter(Boolean);
 
-    // Получаем абсолютные URL внешних CSS
-    const externalStylesheets = Array.from(dom.window.document.querySelectorAll('link[rel="stylesheet"]'))
-      .map(link => new URL(link.href, url).href);
+    // Собираем href внешних стилей из <link rel="stylesheet">
+    const externalCssLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+      .map(link => link.href)
+      .filter(Boolean);
 
-    // Загружаем содержимое каждого внешнего CSS
-    const externalCssContent = await Promise.all(
-      externalStylesheets.map(href => fetchCssContent(href))
-    );
+    // Функция загрузки CSS с обработкой ошибок
+    async function fetchCss(url) {
+      try {
+        const resp = await fetch(url, { timeout: 8000 });
+        if (!resp.ok) {
+          return { url, error: `HTTP ${resp.status}` };
+        }
+        const contentType = resp.headers.get('content-type') || '';
+        if (!contentType.includes('text/css')) {
+          // Иногда css может не иметь правильный content-type, можно не критично
+          // Можно убрать это условие, если хотите
+        }
+        const text = await resp.text();
+        return { url, content: text };
+      } catch (e) {
+        return { url, error: e.message };
+      }
+    }
+
+    // Параллельно загружаем все внешние CSS
+    const externalCssContent = await Promise.all(externalCssLinks.map(fetchCss));
 
     res.status(200).json({
       inlineStyles,
-      externalStylesheets,
       externalCssContent,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: `Внутренняя ошибка сервера: ${error.message}` });
   }
 }
