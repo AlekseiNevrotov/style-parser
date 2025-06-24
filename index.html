@@ -85,8 +85,14 @@
         });
 
         if (!response.ok) {
-          const errData = await response.json();
-          resultDiv.innerHTML = `<div class="error">Ошибка: ${errData.error || 'Неизвестная ошибка'}</div>`;
+          let errData;
+          try {
+            errData = await response.json();
+            resultDiv.innerHTML = `<div class="error">Ошибка: ${errData.error || 'Неизвестная ошибка'}${errData.details ? `<br><pre>${errData.details}</pre>` : ''}</div>`;
+          } catch {
+            const text = await response.text();
+            resultDiv.innerHTML = `<div class="error">Ошибка: ${text}</div>`;
+          }
           return;
         }
 
@@ -94,13 +100,13 @@
 
         let output = '';
 
-        if (data.inlineStyles.length === 0 && data.externalStylesheets.length === 0) {
+        if ((data.inlineStyles?.length ?? 0) === 0 && (data.externalStylesheets?.length ?? 0) === 0) {
           output = 'Стили не найдены.';
         } else {
-          if (data.inlineStyles.length > 0) {
+          if (data.inlineStyles?.length > 0) {
             output += 'Inline стили:\n\n' + data.inlineStyles.join('\n\n') + '\n\n';
           }
-          if (data.externalStylesheets.length > 0) {
+          if (data.externalStylesheets?.length > 0) {
             output += 'Внешние стили (CSS файлы):\n' + data.externalStylesheets.join('\n');
           }
         }
