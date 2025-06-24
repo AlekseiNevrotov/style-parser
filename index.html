@@ -1,163 +1,88 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <title>Парсер стилей по URL</title>
-
-  <!-- Prism CSS (тема okaidia — темная, похожая на VS Code) -->
-  <link
-    href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css"
-    rel="stylesheet"
-  />
-
+  <meta charset="UTF-8">
+  <title>CSS Парсер</title>
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
   <style>
     body {
-      max-width: 700px;
+      max-width: 800px;
       margin: 2rem auto;
       font-family: Arial, sans-serif;
-      background: #f0f0f0;
+      background: #1e1e1e;
+      color: #fff;
       padding: 1rem;
-      border-radius: 8px;
-      box-shadow: 0 0 15px #ccc;
     }
-    input[type="text"] {
-      width: 100%;
-      padding: 0.5rem;
+    input, button {
+      padding: 10px;
       font-size: 16px;
+      width: 100%;
+      margin-bottom: 10px;
+      border: none;
       border-radius: 4px;
-      border: 1px solid #aaa;
-      box-sizing: border-box;
+    }
+    input {
+      background: #2d2d2d;
+      color: white;
     }
     button {
-      margin-top: 1rem;
-      padding: 0.6rem 1.2rem;
-      font-size: 16px;
-      background: #007bff;
-      border: none;
+      background: #007acc;
       color: white;
-      border-radius: 4px;
       cursor: pointer;
-      transition: background-color 0.3s;
     }
-    button:hover {
-      background: #0056b3;
-    }
-
-    .result {
-      margin-top: 1.5rem;
-      max-height: 400px;
-      overflow-y: auto;
-      border-radius: 6px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
+    pre {
       background: #1e1e1e;
+      color: white;
       padding: 1rem;
-      font-size: 14px;
-      line-height: 1.4;
-      font-family: 'Fira Code', Consolas, Monaco, 'Courier New', monospace;
-      white-space: pre-wrap;
-      word-break: break-word;
+      border-radius: 8px;
+      overflow-x: auto;
     }
-
     .error {
       color: red;
-      font-weight: bold;
-      margin-top: 1rem;
     }
   </style>
 </head>
 <body>
 
-  <h1>Парсер стилей по URL</h1>
+  <h1>CSS Парсер сайта</h1>
+  <input type="text" id="urlInput" placeholder="Введите URL сайта, например https://example.com">
+  <button onclick="parseCss()">Получить CSS</button>
+  <div id="result"></div>
 
-  <input
-    type="text"
-    id="urlInput"
-    placeholder="Введите URL сайта, например https://example.com"
-  />
-  <button id="parseBtn">Получить стили</button>
-
-  <div class="result">
-    <pre class="language-css"><code id="cssCode"></code></pre>
-  </div>
-
-  <!-- Prism JS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
-
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script>
-    const btn = document.getElementById('parseBtn');
-    const input = document.getElementById('urlInput');
-    const codeElem = document.getElementById('cssCode');
-    const resultDiv = document.querySelector('.result');
+    async function parseCss() {
+      const url = document.getElementById('urlInput').value.trim();
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = '<p>Загрузка...</p>';
 
-    btn.addEventListener('click', async () => {
-      const url = input.value.trim();
-
-      codeElem.textContent = '';
-      resultDiv.classList.remove('error');
-      codeElem.parentElement.style.display = 'block';
-
-      if (!url) {
-        resultDiv.classList.add('error');
-        codeElem.parentElement.style.display = 'none';
-        resultDiv.textContent = 'Введите URL!';
-        return;
-      }
-
-      resultDiv.classList.remove('error');
-      codeElem.textContent = 'Загрузка...';
-      
       try {
         const response = await fetch('/api/parse', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url }),
+          body: JSON.stringify({ url })
         });
-
-        if (!response.ok) {
-          const errData = await response.json();
-          resultDiv.classList.add('error');
-          codeElem.parentElement.style.display = 'none';
-          resultDiv.textContent = `Ошибка: ${errData.error || 'Неизвестная ошибка'}`;
-          return;
-        }
 
         const data = await response.json();
 
-        let combinedCss = '';
-
-        // Добавляем inline стили
-        if (data.inlineStyles && data.inlineStyles.length > 0) {
-          combinedCss += data.inlineStyles.join('\n\n') + '\n\n';
+        if (!response.ok) {
+          throw new Error(data.error || 'Неизвестная ошибка');
         }
 
-        // Добавляем содержимое внешних CSS
-        if (data.externalCssContent && data.externalCssContent.length > 0) {
-          data.externalCssContent.forEach(cssFile => {
-            if (cssFile.content) {
-              combinedCss += `/* Файл: ${cssFile.url} */\n` + cssFile.content + '\n\n';
-            } else {
-              combinedCss += `/* Не удалось загрузить: ${cssFile.url}, ошибка: ${cssFile.error} */\n\n`;
-            }
-          });
-        }
-
-        if (!combinedCss.trim()) {
-          combinedCss = 'Стили не найдены.';
-          codeElem.parentElement.style.display = 'none';
-          resultDiv.classList.add('error');
-        }
-
-        codeElem.textContent = combinedCss.trim();
-        Prism.highlightElement(codeElem);
+        const code = document.createElement('pre');
+        const codeBlock = document.createElement('code');
+        codeBlock.className = 'css';
+        codeBlock.textContent = data.css || 'CSS не найден';
+        code.appendChild(codeBlock);
+        resultDiv.innerHTML = '';
+        resultDiv.appendChild(code);
+        hljs.highlightElement(codeBlock);
 
       } catch (e) {
-        resultDiv.classList.add('error');
-        codeElem.parentElement.style.display = 'none';
-        resultDiv.textContent = `Ошибка при запросе: ${e.message}`;
+        resultDiv.innerHTML = `<p class="error">Ошибка: ${e.message}</p>`;
       }
-    });
+    }
   </script>
-
 </body>
 </html>

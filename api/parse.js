@@ -1,66 +1,52 @@
-import fetch from 'node-fetch';
-import { JSDOM } from 'jsdom';
+// api/parse.js
+const fetch = require('node-fetch');
+const { JSDOM } = require('jsdom');
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    return res.status(405).json({ error: 'Метод не поддерживается' });
+  }
+
+  const { url } = req.body || {};
+
+  if (!url) {
+    return res.status(400).json({ error: 'Параметр "url" обязателен' });
   }
 
   try {
-    const { url } = req.body;
-
-    if (!url) {
-      return res.status(400).json({ error: 'Параметр url обязателен' });
-    }
-
-    // Получаем HTML страницы
-    const response = await fetch(url, { timeout: 10000 });
-    if (!response.ok) {
-      return res.status(400).json({ error: `Не удалось загрузить страницу: ${response.statusText}` });
-    }
+    const response = await fetch(url);
     const html = await response.text();
 
-    // Парсим HTML через JSDOM
     const dom = new JSDOM(html);
     const document = dom.window.document;
 
-    // Собираем inline стили из <style>
+    // Inline стили
     const inlineStyles = Array.from(document.querySelectorAll('style'))
-      .map(style => style.textContent)
+      .map(style => style.textContent.trim())
       .filter(Boolean);
 
-    // Собираем href внешних стилей из <link rel="stylesheet">
-    const externalCssLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-      .map(link => link.href)
-      .filter(Boolean);
+    // Внешние стили
+    const externalLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+      .map(link => new URL(link.href, url).href);
 
-    // Функция загрузки CSS с обработкой ошибок
-    async function fetchCss(url) {
+    // Загрузка внешнего CSS
+    const externalCssContents = [];
+    for (const cssUrl of externalLinks) {
       try {
-        const resp = await fetch(url, { timeout: 8000 });
-        if (!resp.ok) {
-          return { url, error: `HTTP ${resp.status}` };
-        }
-        const contentType = resp.headers.get('content-type') || '';
-        if (!contentType.includes('text/css')) {
-          // Иногда css может не иметь правильный content-type, можно не критично
-          // Можно убрать это условие, если хотите
-        }
-        const text = await resp.text();
-        return { url, content: text };
+        const cssRes = await fetch(cssUrl);
+        const cssText = await cssRes.text();
+        externalCssContents.push(cssText);
       } catch (e) {
-        return { url, error: e.message };
+        console.warn('Не удалось загрузить:', cssUrl);
       }
     }
 
-    // Параллельно загружаем все внешние CSS
-    const externalCssContent = await Promise.all(externalCssLinks.map(fetchCss));
+    const allCss = [...inlineStyles, ...externalCssContents].join('\n\n');
 
-    res.status(200).json({
-      inlineStyles,
-      externalCssContent,
-    });
+    return res.status(200).json({ css: allCss });
+
   } catch (error) {
-    res.status(500).json({ error: `Внутренняя ошибка сервера: ${error.message}` });
+    console.error('Ошибка парсинга:', error.message);
+    return res.status(500).json({ error: 'Ошибка парсинга страницы' });
   }
-}
+};
