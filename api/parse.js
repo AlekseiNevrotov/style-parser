@@ -2,54 +2,57 @@ import fetch from 'node-fetch';
 import { JSDOM } from 'jsdom';
 
 export default async function handler(req, res) {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
   if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Methods', 'POST');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    res.status(200).end();
-    return;
+    return res.status(200).end();
   }
 
   if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Метод не поддерживается, нужен POST' });
-    return;
+    return res.status(405).json({ error: 'Метод не поддерживается. Используйте POST.' });
   }
 
-  const { url } = req.body;
+  let body;
+  try {
+    body = req.body;
+    // Если body пришел как строка (редко, но бывает на Vercel), парсим его
+    if (typeof body === 'string') {
+      body = JSON.parse(body);
+    }
+  } catch (err) {
+    return res.status(400).json({ error: 'Некорректный JSON в теле запроса' });
+  }
+
+  const { url } = body;
   if (!url) {
-    res.status(400).json({ error: 'Параметр url обязателен' });
-    return;
+    return res.status(400).json({ error: 'Параметр url обязателен' });
   }
 
   try {
     const response = await fetch(url);
-
-    const text = await response.text();
-
     if (!response.ok) {
-      // Возвращаем статус и первые 200 символов текста ошибки
-      return res.status(response.status).json({
-        error: `Ошибка загрузки страницы: ${response.status}`,
-        details: text.slice(0, 200),
-      });
+      return res.status(400).json({ error: `Ошибка загрузки: ${response.statusText}` });
     }
 
-    // Парсим DOM из полученного текста
-    const dom = new JSDOM(text);
+    const html = await response.text();
+    const dom = new JSDOM(html);
+    const document = dom.window.document;
 
-    // Собираем inline стили (теги <style>)
-    const inlineStyles = Array.from(dom.window.document.querySelectorAll('style'))
-      .map(styleTag => styleTag.textContent.trim())
+    const inlineStyles = Array.from(document.querySelectorAll('style'))
+      .map(tag => tag.textContent.trim())
       .filter(Boolean);
 
-    // Собираем внешние CSS (href из <link rel="stylesheet">)
-    const externalStylesheets = Array.from(dom.window.document.querySelectorAll('link[rel="stylesheet"]'))
+    const externalStylesheets = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
       .map(link => link.href)
       .filter(Boolean);
 
-    res.status(200).json({ inlineStyles, externalStylesheets });
-  } catch (error) {
-    res.status(500).json({ error: `Ошибка сервера: ${error.message}` });
+    return res.status(200).json({
+      inlineStyles,
+      externalStylesheets
+    });
+  } catch (err) {
+    return res.status(500).json({ error: `Внутренняя ошибка сервера: ${err.message}` });
   }
 }
