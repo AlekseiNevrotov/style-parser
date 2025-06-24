@@ -1,10 +1,9 @@
 {
-  "name": "style-parser-api",
+  "name": "css-parser",
   "version": "1.0.0",
   "type": "module",
-  "main": "api/parse.js",
   "dependencies": {
     "jsdom": "^24.0.0",
-    "node-fetch": "^3.4.0"
+    "node-fetch": "^3.3.2"
   }
 }
