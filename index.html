@@ -51,9 +51,9 @@
       margin: 0 auto;
     }
     input, button {
-  box-sizing: border-box; 
-  display: block; 
-}
+      box-sizing: border-box; 
+      display: block; 
+    }
     button {
       width: auto;
       padding: 16px 32px;
@@ -76,10 +76,10 @@
       color: var(--accent);
     }
     button:active {
-  border: 1px solid var(--myinterface);
-  background: var(--bg); 
-  color: var(--myinterface);                
-  transform: scale(0.96);  
+      border: 1px solid var(--myinterface);
+      background: var(--bg); 
+      color: var(--myinterface);                
+      transform: scale(0.96);  
     }
     #result {
       background: var(--bg);
@@ -130,7 +130,8 @@
         const code = document.createElement('pre');
         const codeBlock = document.createElement('code');
         codeBlock.className = 'css';
-        codeBlock.textContent = data.css || 'CSS не найден';
+        const cmsInfo = data.cms ? `CMS: ${data.cms}\n` : 'CMS: Неизвестно\n';
+        codeBlock.textContent = cmsInfo + (data.css || 'CSS не найден');
         code.appendChild(codeBlock);
         resultDiv.innerHTML = '';
         resultDiv.appendChild(code);
