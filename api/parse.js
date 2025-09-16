@@ -1,29 +1,105 @@
 const fetch = require('node-fetch');
 const { JSDOM } = require('jsdom');
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Метод не поддерживается' });
   }
+
   const { url } = req.body || {};
   if (!url) {
     return res.status(400).json({ error: 'Параметр "url" обязателен' });
   }
+
   try {
     const response = await fetch(url);
     const html = await response.text();
     const dom = new JSDOM(html);
     const document = dom.window.document;
+
+    // Определение CMS
+    let cms = "Неизвестно";
+    
+    // WordPress
+    if (document.querySelector('meta[name="generator"][content*="WordPress"]')) {
+      cms = "WordPress";
+    } else if (document.body.classList.contains('wp-') || html.includes('/wp-content/')) {
+      cms = "WordPress";
+    }
+
+    // Joomla
+    else if (document.body.classList.contains('joomla') || html.includes('com_content')) {
+      cms = "Joomla";
+    }
+
+    // Drupal
+    else if (document.body.classList.contains('drupal') || html.includes('sites/all/themes/')) {
+      cms = "Drupal";
+    }
+
+    // Magento
+    else if (html.includes('<meta name="generator" content="Magento"')) {
+      cms = "Magento";
+    } else if (html.includes('magento')) {
+      cms = "Magento";
+    }
+
+    // Shopify
+    else if (html.includes('theme-') || document.body.classList.contains('shopify')) {
+      cms = "Shopify";
+    }
+
+    // Blogger
+    else if (html.includes('meta name="generator" content="Blogger"') || url.includes('.blogspot.com')) {
+      cms = "Blogger";
+    }
+
+    // TYPO3
+    else if (html.includes('typo3') || html.includes('typo3conf')) {
+      cms = "TYPO3";
+    }
+
+    // Wix
+    else if (html.includes('wix') || document.body.classList.contains('wix')) {
+      cms = "Wix";
+    }
+
+    // Ghost
+    else if (html.includes('<meta name="generator" content="Ghost"')) {
+      cms = "Ghost";
+    }
+
+    // Squarespace
+    else if (html.includes('squarespace')) {
+      cms = "Squarespace";
+    }
+
+    // Tilda
+    else if (html.includes('<meta name="generator" content="Tilda Publishing"') || html.includes('data-tilda')) {
+      cms = "Tilda";
+    }
+
+    // 1C-Битрикс
+    else if (html.includes('<meta name="generator" content="1C-Bitrix"') || html.includes('/bitrix/')) {
+      cms = "1C-Битрикс";
+    }
+
+    // Извлечение CSS
     const inlineStyles = Array.from(document.querySelectorAll('style'))
       .map(style => style.textContent.trim())
       .filter(Boolean);
+      
     const externalLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
       .map(link => new URL(link.href, url).href);
+    
     const externalCssContents = [];
     for (const cssUrl of externalLinks) {
       try {
@@ -34,8 +110,15 @@ module.exports = async (req, res) => {
         console.warn('Не удалось загрузить:', cssUrl);
       }
     }
+
     const allCss = [...inlineStyles, ...externalCssContents].join('\n\n');
-    return res.status(200).json({ css: allCss });
+
+    // Возвращаем CSS и информацию о CMS
+    return res.status(200).json({ 
+      css: allCss, 
+      cms: cms 
+    });
+    
   } catch (error) {
     console.error('Ошибка парсинга:', error.message);
     return res.status(500).json({ error: 'Ошибка парсинга страницы' });
