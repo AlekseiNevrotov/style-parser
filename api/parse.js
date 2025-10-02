@@ -9,6 +9,11 @@ module.exports = async (req, res) => {
   const { url } = req.body || {};
   if (!url) { return res.status(400).json({ error: 'Параметр "url" обязателен' }); }
   try {
+    const headResponse = await fetch(url, { method: 'HEAD' });
+    const headers = headResponse.headers;
+    const server = headers.get('server')?.toLowerCase() || '';
+    const poweredBy = headers.get('x-powered-by')?.toLowerCase() || '';
+    const via = headers.get('via')?.toLowerCase() || '';
     const response = await fetch(url);
     const html = await response.text();
     const dom = new JSDOM(html);
@@ -76,13 +81,31 @@ module.exports = async (req, res) => {
     if (scriptSrcs.some(src => src.includes('three.js'))) {
       techStack.jsLibraries.push('Three.js');
     }
-    if (url.endsWith('.php') || html.includes('<?php') || document.querySelector('meta[name="generator"][content*="PHP"]')) {
+    if (poweredBy.includes('express')) {
+      techStack.backendHints.push('Node.js / Express');
+    } else if (poweredBy.includes('php')) {
+      techStack.backendHints.push('PHP');
+    } else if (poweredBy.includes('asp.net')) {
+      techStack.backendHints.push('ASP.NET');
+    } else if (server.includes('nginx') && poweredBy.includes('node')) {
+      techStack.backendHints.push('Node.js (behind Nginx)');
+    } else if (server.includes('apache')) {
+      techStack.backendHints.push('Apache / PHP?');
+    } else if (server.includes('cowboy')) {
+      techStack.backendHints.push('Elixir / Phoenix');
+    } else if (server.includes('gws')) {
+      techStack.backendHints.push('Google (GCP? Node possible)');
+    } else if (url.includes('vercel.app') || headers.get('x-vercel-id')) {
+      techStack.backendHints.push('Vercel (Node.js runtime)');
+    } else if (via.includes('1.1 vegur')) {
+      techStack.backendHints.push('Netlify (Node.js possible)');
+    } else if (url.endsWith('.php') || html.includes('<?php') || document.querySelector('meta[name="generator"][content*="PHP"]')) {
       techStack.backendHints.push('PHP');
     }
-    if (url.includes('.asp') || html.includes('<%') || document.querySelector('meta[name="generator"][content*="ASP.NET"]')) {
+    else if (url.includes('.asp') || html.includes('<%') || document.querySelector('meta[name="generator"][content*="ASP.NET"]')) {
       techStack.backendHints.push('ASP.NET');
     }
-    if (html.includes('node.js') || scriptSrcs.some(src => src.includes('express'))) {
+    else if (html.includes('node.js') || scriptSrcs.some(src => src.includes('express'))) {
       techStack.backendHints.push('Node.js');
     }
     if (techStack.frontendFrameworks.length === 0) techStack.frontendFrameworks.push('Vanilla JS');
