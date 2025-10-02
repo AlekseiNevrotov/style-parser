@@ -151,13 +151,13 @@
           const backend = data.techStack.backendHints ? data.techStack.backendHints.join(', ') : 'Неизвестно';
           techInfo = `Стек: Языки - ${languages}; Frontend - ${frontend}; CSS фреймворки - ${cssFw}; JS библиотеки - ${jsLib}; Backend - ${backend}\n`;
         }
-        codeBlock.textContent = cmsInfo + techInfo + (data.css || 'CSS не найден');
+        codeBlock.textContent = cmsInfo + techInfo + '\n' + (data.css || 'CSS не найден');
         code.appendChild(codeBlock);
         resultDiv.innerHTML = '';
         resultDiv.appendChild(code);
         hljs.highlightElement(codeBlock);
       } catch (e) {
-        console.error('Детали ошибки:', e); // Для отладки в консоли
+        console.error('Детали ошибки:', e);
         resultDiv.innerHTML = `<p class="error">Ошибка: ${e.message}</p><p class="error">Проверьте консоль (F12) для деталей. Если 404 - передеплойте API на Vercel.</p>`;
       }
     }
