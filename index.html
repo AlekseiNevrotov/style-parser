@@ -149,7 +149,7 @@
           const cssFw = data.techStack.cssFrameworks ? data.techStack.cssFrameworks.join(', ') : 'Custom CSS';
           const jsLib = data.techStack.jsLibraries ? data.techStack.jsLibraries.join(', ') : 'Неизвестно';
           const backend = data.techStack.backendHints ? data.techStack.backendHints.join(', ') : 'Неизвестно';
-          techInfo = `Стек: Языки — ${languages}; Frontend — ${frontend}; CSS фреймворки — ${cssFw}; JS библиотеки — ${jsLib}; Backend — ${backend}\n`;
+          techInfo = `Стек: ${languages}; Frontend — ${frontend}; CSS фреймворки — ${cssFw}; JS библиотеки — ${jsLib}; Backend — ${backend}\n`;
         }
         codeBlock.textContent = cmsInfo + techInfo + '\n' + (data.css || 'CSS не найден');
         code.appendChild(codeBlock);
