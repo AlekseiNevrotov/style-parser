@@ -54,7 +54,7 @@ module.exports = async (req, res) => {
     if (scriptSrcs.some(src => src.includes('vue') || html.includes('data-v-'))) {
       techStack.frontendFrameworks.push('Vue.js');
     }
-    if (scriptSrcs.some(src => src.includes('angular') || html.includes('ng-') || document.querySelector('[ng-app]'))) {
+    if (scriptSrcs.some(src => src.includes('angular') || html.includes('angular.module'))) {
       techStack.frontendFrameworks.push('Angular');
     }
     if (scriptSrcs.some(src => src.includes('svelte'))) {

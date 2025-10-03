@@ -1,166 +1,129 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <title>CSS Парсер</title>
-  <link rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
-  <style>
-    :root {
-      --mylogo: #26D9CD;
-      --accent: #26D97C;
-      --myinterface: #16847D;
-      --bg: #121212;
-      --black2: #191919;
-      --black3: #1C1C1C;
-      --grey: #404040;
-      --grey2: #666666;
-      --text: #FFFFFF;
+const fetch = require('node-fetch');
+const { JSDOM } = require('jsdom');
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') { return res.status(200).end(); }
+  if (req.method !== 'POST') { return res.status(405).json({ error: 'Метод не поддерживается' }); }
+  const { url } = req.body || {};
+  if (!url) { return res.status(400).json({ error: 'Параметр "url" обязателен' }); }
+  try {
+    const headResponse = await fetch(url, { method: 'HEAD' });
+    const headers = headResponse.headers;
+    const server = headers.get('server')?.toLowerCase() || '';
+    const poweredBy = headers.get('x-powered-by')?.toLowerCase() || '';
+    const via = headers.get('via')?.toLowerCase() || '';
+    const response = await fetch(url);
+    const html = await response.text();
+    const dom = new JSDOM(html);
+    const document = dom.window.document;
+    let cms = "Неизвестно";
+    if (document.querySelector('meta[name="generator"][content*="WordPress"]')) { cms = "WordPress"; }
+    else if (document.body.classList.contains('wp-') || html.includes('/wp-content/')) { cms = "WordPress"; }
+    else if (document.body.classList.contains('joomla') || html.includes('com_content')) { cms = "Joomla"; }
+    else if (document.body.classList.contains('drupal') || html.includes('sites/all/themes/')) { cms = "Drupal"; }
+    else if (html.includes('<meta name="generator" content="Magento"')) { cms = "Magento"; }
+    else if (html.includes('magento')) { cms = "Magento"; }
+    else if (html.includes('shopify') || document.body.classList.contains('shopify') || 
+             document.querySelector('meta[name="shopify-digital-wallet"]') || 
+             document.querySelector('script[src*="shopify"]')) { cms = "Shopify"; }
+    else if (html.includes('meta name="generator" content="Blogger"') || url.includes('.blogspot.com')) { cms = "Blogger"; }
+    else if (html.includes('typo3') || html.includes('typo3conf')) { cms = "TYPO3"; }
+    else if (html.includes('wix') || document.body.classList.contains('wix')) { cms = "Wix"; }
+    else if (html.includes('<meta name="generator" content="Ghost"')) { cms = "Ghost"; }
+    else if (html.includes('squarespace')) { cms = "Squarespace"; }
+    else if (html.includes('<meta name="generator" content="Tilda Publishing"') || html.includes('data-tilda')) { cms = "Tilda"; }
+    else if (html.includes('<meta name="generator" content="1C-Bitrix"') || html.includes('/bitrix/')) { cms = "1C-Битрикс"; }
+    const scriptSrcs = Array.from(document.querySelectorAll('script[src]')).map(s => new URL(s.src, url).href);
+    const externalLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(link => new URL(link.href, url).href);
+    const hasJS = scriptSrcs.length > 0 || html.includes('<script');
+    const hasCSS = externalLinks.length > 0 || document.querySelector('style');
+    let techStack = {
+      languages: ['HTML'],
+      frontendFrameworks: [],
+      cssFrameworks: [],
+      jsLibraries: [],
+      backendHints: []
+    };
+    if (hasCSS) techStack.languages.push('CSS');
+    if (hasJS) techStack.languages.push('JavaScript');
+    if (scriptSrcs.some(src => src.includes('react') || src.includes('next.js') || html.includes('data-reactroot'))) {
+      techStack.frontendFrameworks.push('React');
     }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'DM Sans', Arial, sans-serif;
-      font-weight: 300;
-      max-width: 100%
+    if (scriptSrcs.some(src => src.includes('vue') || html.includes('data-v-'))) {
+      techStack.frontendFrameworks.push('Vue.js');
     }
-    h1 {
-      font-family: 'Ubuntu', Arial, sans-serif;
-      font-weight: 300;
-      margin-bottom: 12px;
-      margin-top: 20px;
-      font-size: 48px;
-      text-align: center;
-      -webkit-text-size-adjust: 100%;
+    if (scriptSrcs.some(src => src.includes('angular') || html.includes('angular.module'))) {
+      techStack.frontendFrameworks.push('Angular');
     }
-    input, button {
-      width: 100%;
-      padding: 20px;
-      margin-bottom: 10px;
-      border: none;
-      border-radius: 24px;
-      font-size: 16px;
-      font-family: 'DM Sans', Arial, sans-serif;
-      font-weight: 300;
+    if (scriptSrcs.some(src => src.includes('svelte'))) {
+      techStack.frontendFrameworks.push('Svelte');
     }
-    input {
-      background: var(--black3);
-      color: var(--text);
-      width: 600px;
-      display: block;
-      margin: 0 auto;
+    if (externalLinks.some(link => link.includes('bootstrap'))) {
+      techStack.cssFrameworks.push('Bootstrap');
     }
-    input, button {
-      box-sizing: border-box; 
-      display: block; 
+    if (externalLinks.some(link => link.includes('tailwind'))) {
+      techStack.cssFrameworks.push('Tailwind CSS');
     }
-    button {
-      width: auto;
-      padding: 16px 32px;
-      border-radius: 60px;
-      background: var(--bg);
-      color: var(--text);
-      cursor: pointer;
-      border: 1px solid var(--accent);
-      transition: all 0.4s ease;
-      font-size: 16px;
-      font-family: 'DM Sans', Arial, sans-serif;
-      font-weight: 300;
-      display: block;
-      margin: 0 auto;
-      margin-top: 40px;
+    if (externalLinks.some(link => link.includes('bulma'))) {
+      techStack.cssFrameworks.push('Bulma');
     }
-    button:hover {
-      border: 1px solid var(--accent);
-      background: var(--bg);
-      color: var(--accent);
+    if (externalLinks.some(link => link.includes('foundation'))) {
+      techStack.cssFrameworks.push('Foundation');
     }
-    button:active {
-      border: 1px solid var(--myinterface);
-      background: var(--bg); 
-      color: var(--myinterface);                
-      transform: scale(0.96);  
+    if (scriptSrcs.some(src => src.includes('jquery'))) {
+      techStack.jsLibraries.push('jQuery');
     }
-    #result {
-      background: var(--bg);
-      color: var(--text);
-      padding: 12px;
-      margin-top: 10px;
-      font-size: 16px;
-      font-family: 'DM Sans', Arial, sans-serif;
-      font-weight: 300;
-      min-height: 40px;
-      word-break: break-all;
+    if (scriptSrcs.some(src => src.includes('lodash'))) {
+      techStack.jsLibraries.push('Lodash');
     }
-    pre {
-      background: var(--bg);
-      color: var(--text);
-      border-radius: 4px;
-      padding: 10px;
-      margin: 0;
-      font-size: 0.95em;
-      overflow-x: auto;
+    if (scriptSrcs.some(src => src.includes('three.js'))) {
+      techStack.jsLibraries.push('Three.js');
     }
-    .error {
-      color: var(--accent);
+    if (poweredBy.includes('express')) {
+      techStack.backendHints.push('Node.js / Express');
+    } else if (poweredBy.includes('php')) {
+      techStack.backendHints.push('PHP');
+    } else if (poweredBy.includes('asp.net')) {
+      techStack.backendHints.push('ASP.NET');
+    } else if (server.includes('nginx') && poweredBy.includes('node')) {
+      techStack.backendHints.push('Node.js (behind Nginx)');
+    } else if (server.includes('apache')) {
+      techStack.backendHints.push('Apache / PHP?');
+    } else if (server.includes('cowboy')) {
+      techStack.backendHints.push('Elixir / Phoenix');
+    } else if (server.includes('gws')) {
+      techStack.backendHints.push('Google (GCP? Node possible)');
+    } else if (url.includes('vercel.app') || headers.get('x-vercel-id')) {
+      techStack.backendHints.push('Vercel (Node.js runtime)');
+    } else if (via.includes('1.1 vegur')) {
+      techStack.backendHints.push('Netlify (Node.js possible)');
+    } else if (url.endsWith('.php') || html.includes('<?php') || document.querySelector('meta[name="generator"][content*="PHP"]')) {
+      techStack.backendHints.push('PHP');
     }
-  </style>
-</head>
-<body>
-  <h1>CSS Парсер стиля</h1>
-  <input type="text" id="urlInput" placeholder="Введите URL сайта, например https://example.com">
-  <button onclick="parseCss()">Получить CSS</button>
-  <div id="result"></div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-  <script>
-    async function parseCss() {
-      const url = document.getElementById('urlInput').value.trim();
-      if (!url) {
-        return document.getElementById('result').innerHTML = '<p class="error">Введите URL сайта</p>';
-      }
-      const resultDiv = document.getElementById('result');
-      resultDiv.innerHTML = '<p>Загрузка...</p>';
+    else if (url.includes('.asp') || html.includes('<%') || document.querySelector('meta[name="generator"][content*="ASP.NET"]')) {
+      techStack.backendHints.push('ASP.NET');
+    }
+    else if (html.includes('node.js') || scriptSrcs.some(src => src.includes('express'))) {
+      techStack.backendHints.push('Node.js');
+    }
+    if (techStack.frontendFrameworks.length === 0) techStack.frontendFrameworks.push('Vanilla JS');
+    if (techStack.cssFrameworks.length === 0) techStack.cssFrameworks.push('Custom CSS');
+    if (techStack.backendHints.length === 0) techStack.backendHints.push('Неизвестно');
+    const inlineStyles = Array.from(document.querySelectorAll('style')).map(style => style.textContent.trim()).filter(Boolean);
+    const externalCssContents = [];
+    for (const cssUrl of externalLinks) {
       try {
-        const response = await fetch('https://style-parser.vercel.app/api/parse', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url })
-        });
-        const data = await response.json();
-        if (!response.ok) {
-          if (response.status === 404) {
-            throw new Error('API не найден (404). Проверьте деплой на Vercel и передеплойте проект.');
-          } else if (response.status === 500) {
-            throw new Error('Ошибка на сервере (500). Попробуйте позже или проверьте логи Vercel.');
-          } else if (response.status === 400) {
-            throw new Error(data.error || 'Неверный запрос (400). Убедитесь, что URL корректный.');
-          } else {
-            throw new Error(data.error || `Ошибка сервера (${response.status})`);
-          }
-        }
-        const code = document.createElement('pre');
-        const codeBlock = document.createElement('code');
-        codeBlock.className = 'css';
-        const cmsInfo = data.cms ? `CMS: ${data.cms}\n` : 'CMS: Неизвестно\n';
-        let techInfo = '';
-        if (data.techStack) {
-          const languages = data.techStack.languages ? data.techStack.languages.join(', ') : 'Неизвестно';
-          const frontend = data.techStack.frontendFrameworks ? data.techStack.frontendFrameworks.join(', ') : 'Vanilla JS';
-          const cssFw = data.techStack.cssFrameworks ? data.techStack.cssFrameworks.join(', ') : 'Custom CSS';
-          const jsLib = data.techStack.jsLibraries ? data.techStack.jsLibraries.join(', ') : 'Неизвестно';
-          const backend = data.techStack.backendHints ? data.techStack.backendHints.join(', ') : 'Неизвестно';
-          techInfo = `Стек: ${languages}; Frontend — ${frontend}; CSS фреймворки — ${cssFw}; JS библиотеки — ${jsLib}; Backend — ${backend}\n`;
-        }
-        codeBlock.textContent = cmsInfo + techInfo + '\n' + (data.css || 'CSS не найден');
-        code.appendChild(codeBlock);
-        resultDiv.innerHTML = '';
-        resultDiv.appendChild(code);
-        hljs.highlightElement(codeBlock);
-      } catch (e) {
-        console.error('Детали ошибки:', e);
-        resultDiv.innerHTML = `<p class="error">Ошибка: ${e.message}</p><p class="error">Проверьте консоль (F12) для деталей. Если 404 - передеплойте API на Vercel.</p>`;
-      }
+        const cssRes = await fetch(cssUrl);
+        const cssText = await cssRes.text();
+        externalCssContents.push(cssText);
+      } catch (e) { console.warn('Не удалось загрузить:', cssUrl); }
     }
-  </script>
-</body>
-</html>
+    const allCss = [...inlineStyles, ...externalCssContents].join('\n\n');
+    return res.status(200).json({ css: allCss, cms: cms, techStack: techStack });
+  } catch (error) {
+    console.error('Ошибка парсинга:', error.message);
+    return res.status(500).json({ error: 'Ошибка парсинга страницы' });
+  }
+};
