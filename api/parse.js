@@ -30,7 +30,11 @@ module.exports = async (req, res) => {
              document.querySelector('script[src*="shopify"]')) { cms = "Shopify"; }
     else if (html.includes('meta name="generator" content="Blogger"') || url.includes('.blogspot.com')) { cms = "Blogger"; }
     else if (html.includes('typo3') || html.includes('typo3conf')) { cms = "TYPO3"; }
-    else if (html.includes('wix') || document.body.classList.contains('wix')) { cms = "Wix"; }
+    else if (document.querySelector('meta[name="generator"][content*="Wix"]') || 
+             (document.body.classList.contains('wix') && 
+              (document.querySelector('script[src*="wixstatic.com"]') || document.querySelector('script[src*="wix.com"]') || html.includes('data-wix-dynamic')))) { 
+      cms = "Wix"; 
+    }
     else if (html.includes('<meta name="generator" content="Ghost"')) { cms = "Ghost"; }
     else if (html.includes('squarespace')) { cms = "Squarespace"; }
     else if (html.includes('<meta name="generator" content="Tilda Publishing"') || html.includes('data-tilda')) { cms = "Tilda"; }
